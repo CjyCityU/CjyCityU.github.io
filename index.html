@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Music Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { primary: '#6366f1', secondary: '#8b5cf6' }
+                }
+            }
+        }
+    </script>
+    <style>
+        .think-box { height: 140px; overflow: auto; background: #f9fafb; border-radius: 8px; padding: 10px; }
+        .think-line { opacity: 0; transform: translateY(10px); animation: fadeIn 0.6s forwards; margin-bottom: 4px; font-size: 13px; }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+        .report-part { opacity: 0; transform: translateY(10px); transition: all 0.6s ease; }
+        .report-part.show { opacity: 1; transform: translateY(0); }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+<div class="sticky top-0 z-50 bg-white shadow">
+    <div class="px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <i class="fa fa-music text-xl text-primary"></i>
+            <span class="font-bold" id="logo_text">AI音乐生成器</span>
+        </div>
+        <div class="flex items-center gap-5 text-sm font-medium">
+            <button id="nav_insights" class="hover:text-primary transition-colors">数据分析</button>
+            <button id="nav_about" class="hover:text-primary transition-colors">关于我们</button>
+            <button id="nav_contact" class="hover:text-primary transition-colors">联系我们</button>
+            <select id="langSwitch" class="border p-1 text-sm">
+                <option value="zh-CN">简体中文</option>
+                <option value="zh-TW">繁體中文</option>
+                <option value="en">English</option>
+            </select>
+            <div id="loginBox"><button id="loginBtn" class="text-primary">登录</button></div>
+            <div id="userBox" class="hidden items-center gap-2">
+                <span class="text-green-600 text-xs" id="user_logged_text">已登录</span>
+                <button id="logoutBtn" class="text-red-500 text-xs">退出</button>
+            </div>
+        </div>
+    </div>
+    <div id="expandArea" class="border-t px-4 py-3 bg-gray-50 hidden">
+        <div id="contentInsights" class="hidden">
+            <p class="text-sm font-medium" id="exp_insights_title">📊 数据分析</p>
+            <p class="text-xs text-gray-600" id="exp_insights_desc">和弦进行、调性分布、热门曲风趋势分析</p>
+        </div>
+        <div id="contentAbout" class="hidden">
+            <p class="text-sm font-medium" id="exp_about_title">ℹ️ 关于我们</p>
+            <p class="text-xs text-gray-600" id="exp_about_desc">专注AI音乐创作与分析技术，为音乐创作者提供智能工具。</p>
+        </div>
+        <div id="contentContact" class="hidden">
+            <p class="text-sm font-medium mb-1" id="exp_contact_title">📞 联系信息</p>
+            <p class="text-xs" id="contactAddr">香港特别行政区 新界葵涌区嘉庆路11-13号 生昌工业大厦 7楼7室</p>
+            <p class="text-xs mt-1" id="contactMail">邮箱：komorebi.prestige@kp.com</p>
+            <p class="text-xs" id="contactPhone">电话：+852 5136 4213</p>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-6xl mx-auto px-4 py-6">
+    <div id="page1" class="block">
+        <div class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white p-6 rounded-xl mb-6">
+            <h1 class="text-xl font-bold" id="p1_title">AI音乐分析工具</h1>
+            <p id="p1_sub">选择分析元素与调式，生成Billboard报告</p>
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow mb-6">
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <label class="flex items-center gap-2 p-2 border rounded"><input type="checkbox" checked> <span id="p1_name">歌曲名称</span></label>
+                <label class="flex items-center gap-2 p-2 border rounded"><input type="checkbox" checked> <span id="p1_lyric">歌词</span></label>
+                <label class="flex items-center gap-2 p-2 border rounded"><input type="checkbox" checked> <span id="p1_key">调式</span></label>
+                <label class="flex items-center gap-2 p-2 border rounded"><input type="checkbox" checked> <span id="p1_chord">和弦</span></label>
+            </div>
+            <div class="flex gap-4 mb-4">
+                <label class="flex items-center gap-2"><input type="radio" name="mode" value="major" checked> <span id="p1_major">大调</span></label>
+                <label class="flex items-center gap-2"><input type="radio" name="mode" value="minor"> <span id="p1_minor">小调</span></label>
+            </div>
+            <button id="toPage2" class="bg-primary text-white px-4 py-2 rounded">
+                <span id="p1_btn">获取2025 Billboard分析</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="page2" class="hidden">
+        <div class="bg-white p-6 rounded-xl shadow mb-6">
+            <div class="flex justify-between mb-4">
+                <h2 class="font-bold text-lg" id="p2_title">2025 Billboard 分析报告</h2>
+                <button id="back1" class="text-primary">返回</button>
+            </div>
+            <div class="mb-4">
+                <h3 class="text-sm font-semibold mb-1" id="ai_think_title">AI 思考过程</h3>
+                <div class="think-box" id="thinkBox"></div>
+            </div>
+            <div class="mb-6">
+                <h3 class="font-semibold mb-2" id="p2_report">分析总结报告</h3>
+                <div id="reportContainer" class="space-y-2 text-sm"></div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" id="chartArea" style="display:none">
+                <div class="h-64">
+                    <h4 class="text-sm font-medium mb-1" id="chart_key_title">调性分布</h4>
+                    <canvas id="chartKey"></canvas>
+                </div>
+                <div class="h-64">
+                    <h4 class="text-sm font-medium mb-1" id="chart_chord_title">和弦进行统计</h4>
+                    <canvas id="chartChord"></canvas>
+                </div>
+            </div>
+            <div class="overflow-x-auto mb-6" id="tableArea" style="display:none">
+                <h3 class="font-semibold mb-2" id="song_list_title">歌曲详情列表</h3>
+                <table id="songTable" class="w-full border text-sm"></table>
+            </div>
+            <div class="overflow-x-auto mb-6" id="chordRankArea" style="display:none">
+                <h3 class="font-semibold mb-2" id="chord_rank_title">和弦进行频率排行（降序）</h3>
+                <table id="chordRankTable" class="w-full border text-sm"></table>
+            </div>
+            <button id="toPage3" class="bg-primary text-white px-4 py-2 rounded">
+                <span id="p2_next">前往AI音乐生成</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="page3" class="hidden">
+        <div class="bg-white p-6 rounded-xl shadow mb-6">
+            <div class="flex justify-between mb-4">
+                <h2 class="font-bold text-lg" id="p3_title">AI音乐生成</h2>
+                <button id="back2" class="text-primary">返回</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label id="p3_lang" class="block mb-1 font-medium">歌词语言</label>
+                    <select id="genLang" class="w-full border p-2 rounded">
+                        <option value="cn" id="opt_cn">中文</option>
+                        <option value="en" id="opt_en">英文</option>
+                        <option value="bi" id="opt_bi">中英双语</option>
+                    </select>
+                </div>
+                <div>
+                    <label id="p3_style" class="block mb-1 font-medium">风格</label>
+                    <select id="genStyle" class="w-full border p-2 rounded">
+                        <option value="pop" id="opt_pop">Pop</option>
+                        <option value="rock" id="opt_rock">Rock</option>
+                        <option value="rnb" id="opt_rnb">R&B</option>
+                        <option value="jazz" id="opt_jazz">Jazz</option>
+                        <option value="rap" id="opt_rap">Rap</option>
+                    </select>
+                </div>
+                <div>
+                    <label id="p3_key" class="block mb-1 font-medium">调</label>
+                    <select id="genKey" class="w-full border p-2 rounded">
+                        <option value="C">C</option><option value="G">G</option><option value="D">D</option>
+                        <option value="A">A</option><option value="E">E</option><option value="Am">Am</option>
+                    </select>
+                </div>
+                <div>
+                    <label id="p3_mode" class="block mb-1 font-medium">调式</label>
+                    <select id="genMode" class="w-full border p-2 rounded" disabled>
+                        <option value="major" id="opt_major">大调</option>
+                        <option value="minor" id="opt_minor">小调</option>
+                    </select>
+                </div>
+                <div>
+                    <label id="p3_bpm" class="block mb-1 font-medium">BPM</label>
+                    <select id="genBpm" class="w-full border p-2 rounded">
+                        <option value="60">60</option><option value="80">80</option><option value="100">100</option><option value="120">120</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label id="p3_lyrics" class="block mb-1 font-medium">自定义歌词 / 主题</label>
+                <textarea id="genOwnLyric" class="w-full border p-2 rounded" rows="3"></textarea>
+            </div>
+            <div class="mb-3">
+                <label id="p3_prompt" class="block mb-1 font-medium">AI生成提示词</label>
+                <textarea id="genPrompt" class="w-full border p-2 rounded" rows="3"></textarea>
+            </div>
+            <div class="flex gap-2">
+                <button id="genByAnalysis" class="flex-1 bg-green-500 text-white py-2 rounded">
+                    <span id="p3_auto">根据分析一键生成</span>
+                </button>
+                <button id="startGen" class="flex-1 bg-primary text-white py-2 rounded">
+                    <span id="p3_gen">生成音乐</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="progressModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-xl w-80">
+        <h3 class="text-center font-bold mb-2" id="modalTitle">音乐生成中</h3>
+        <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
+            <div id="progressBar" class="h-2 bg-primary rounded-full" style="width:0%"></div>
+        </div>
+        <p class="text-center text-xs" id="modalTip">正在根据分析结果生成歌曲，请稍候...</p>
+    </div>
+</div>
+
+<script>
+const i18n = {
+    'zh-CN': {
+        logo_text:"AI音乐生成器",
+        nav_insights:"数据分析", nav_about:"关于我们", nav_contact:"联系我们",
+        loginBtn:"登录", logoutBtn:"退出", user_logged_text:"已登录",
+        back:"返回",
+        exp_insights_title:"📊 数据分析", exp_insights_desc:"和弦进行、调性分布、热门曲风趋势分析",
+        exp_about_title:"ℹ️ 关于我们", exp_about_desc:"专注AI音乐创作与分析技术，为音乐创作者提供智能工具。",
+        exp_contact_title:"📞 联系信息", contactAddr:"香港特别行政区 新界葵涌区嘉庆路11-13号 生昌工业大厦 7楼7室",
+        contactMail:"邮箱：komorebi.prestige@kp.com", contactPhone:"电话：+852 5136 4213",
+        p1_title:"AI音乐分析工具", p1_sub:"选择分析元素与调式，生成Billboard报告",
+        p1_name:"歌曲名称", p1_lyric:"歌词", p1_key:"调式", p1_chord:"和弦",
+        p1_major:"大调", p1_minor:"小调", p1_btn:"获取2025 Billboard分析",
+        p2_title:"2025 Billboard 分析报告", ai_think_title:"AI 思考过程",
+        p2_report:"分析总结报告", chart_key_title:"调性分布", chart_chord_title:"和弦进行统计",
+        song_list_title:"歌曲详情列表", chord_rank_title:"和弦进行频率排行（降序）",
+        p2_next:"前往AI音乐生成",
+        p3_title:"AI音乐生成", p3_lang:"歌词语言", p3_style:"风格",
+        p3_key:"调", p3_mode:"调式", p3_bpm:"BPM",
+        p3_lyrics:"自定义歌词 / 主题", p3_prompt:"AI生成提示词",
+        p3_auto:"根据分析一键生成", p3_gen:"生成音乐",
+        opt_cn:"中文", opt_en:"英文", opt_bi:"中英双语",
+        opt_pop:"Pop", opt_rock:"Rock", opt_rnb:"R&B", opt_jazz:"Jazz", opt_rap:"Rap",
+        opt_major:"大调", opt_minor:"小调",
+        modalTitle:"音乐生成中", modalTip:"正在根据分析结果生成歌曲，请稍候...",
+        successMsg:"歌曲生成完成！",
+        count:"数量", rank:"排名", percent:"占比",
+        thinkSteps:[
+            "正在加载2025 Billboard热门歌曲数据集…",
+            "根据用户选择，仅筛选【{mode}】歌曲进行分析…",
+            "解析每首歌曲的调性分布与音阶特征…",
+            "提取和弦进行模式并统计出现频率…",
+            "分析情绪特征与市场偏好关联…",
+            "生成可视化图表与数据排行…",
+            "整理完整分析报告，准备输出结果…"
+        ],
+        reportTexts:[
+            "本次分析基于2025年度Billboard流行音乐榜单，数据覆盖全球热门单曲，具备较强市场代表性。",
+            "系统已按要求过滤数据，当前分析范围仅限{mode}曲目，确保结果针对性。",
+            "调性统计显示，热门歌曲高度集中在少量常用调式，符合现代流行音乐创作规律。",
+            "和弦进行模式呈现明显集中趋势，少量经典组合占据主流，适合用于AI快速创作。",
+            "{mode}歌曲整体偏向{emotion}风格。",
+            "下方图表直观展示调性分布与和弦使用频率，可直接用于创作参考。",
+            "综合所有数据，当前热门音乐结构高度模式化，使用推荐和弦与调式可大幅提升创作适配度。"
+        ],
+        majorEmotion:"积极、轻快、正能量",
+        minorEmotion:"叙事、抒情、深沉"
+    },
+    'zh-TW': {
+        logo_text:"AI音樂生成器",
+        nav_insights:"數據分析", nav_about:"關於我們", nav_contact:"聯繫我們",
+        loginBtn:"登入", logoutBtn:"登出", user_logged_text:"已登入",
+        back:"返回",
+        exp_insights_title:"📊 數據分析", exp_insights_desc:"和弦進行、調性分佈、熱門曲風趨勢分析",
+        exp_about_title:"ℹ️ 關於我們", exp_about_desc:"專注AI音樂創作與分析技術，為音樂創作者提供智能工具。",
+        exp_contact_title:"📞 聯繫資料", contactAddr:"香港特別行政區 新界葵涌區嘉慶路11-13號 生昌工業大廈 7樓7室",
+        contactMail:"電郵：komorebi.prestige@kp.com", contactPhone:"電話：+852 5136 4213",
+        p1_title:"AI音樂分析工具", p1_sub:"選擇分析元素與調式，生成Billboard報告",
+        p1_name:"歌曲名稱", p1_lyric:"歌詞", p1_key:"調式", p1_chord:"和弦",
+        p1_major:"大調", p1_minor:"小調", p1_btn:"獲取2025 Billboard分析",
+        p2_title:"2025 Billboard 分析報告", ai_think_title:"AI 思考過程",
+        p2_report:"分析總結報告", chart_key_title:"調性分佈", chart_chord_title:"和弦進行統計",
+        song_list_title:"歌曲詳細列表", chord_rank_title:"和弦進行頻率排行（降序）",
+        p2_next:"前往AI音樂生成",
+        p3_title:"AI音樂生成", p3_lang:"歌詞語言", p3_style:"風格",
+        p3_key:"調", p3_mode:"調式", p3_bpm:"BPM",
+        p3_lyrics:"自訂歌詞 / 主題", p3_prompt:"AI生成提示詞",
+        p3_auto:"根據分析一鍵生成", p3_gen:"生成音樂",
+        opt_cn:"中文", opt_en:"英文", opt_bi:"中英雙語",
+        opt_pop:"Pop", opt_rock:"Rock", opt_rnb:"R&B", opt_jazz:"Jazz", opt_rap:"Rap",
+        opt_major:"大調", opt_minor:"小調",
+        modalTitle:"音樂生成中", modalTip:"正在根據分析結果生成歌曲，請稍候...",
+        successMsg:"歌曲生成完成！",
+        count:"數量", rank:"排名", percent:"佔比",
+        thinkSteps:[
+            "正在載入2025 Billboard熱門歌曲數據集…",
+            "根據用戶選擇，僅篩選【{mode}】歌曲進行分析…",
+            "解析每首歌曲的調性分佈與音階特徵…",
+            "提取和弦進行模式並統計出現頻率…",
+            "分析情緒特徵與市場偏好關聯…",
+            "生成可視化圖表與數據排行…",
+            "整理完整分析報告，準備輸出結果…"
+        ],
+        reportTexts:[
+            "本次分析基於2025年度Billboard流行音樂榜單，數據覆蓋全球熱門單曲，具備較強市場代表性。",
+            "系統已按要求過濾數據，當前分析範圍僅限{mode}曲目，確保結果針對性。",
+            "調性統計顯示，熱門歌曲高度集中在少量常用調式，符合現代流行音樂創作規律。",
+            "和弦進行模式呈現明顯集中趨勢，少量經典組合佔據主流，適合用於AI快速創作。",
+            "{mode}歌曲整體偏向{emotion}風格。",
+            "下方圖表直觀展示調性分佈與和弦使用頻率，可直接用於創作參考。",
+            "綜合所有數據，當前熱門音樂結構高度模式化，使用推薦和弦與調式可大幅提升創作適配度。"
+        ],
+        majorEmotion:"積極、輕快、正能量",
+        minorEmotion:"敘事、抒情、深沉"
+    },
+    'en': {
+        logo_text:"AI Music Generator",
+        nav_insights:"Insights", nav_about:"About", nav_contact:"Contact",
+        loginBtn:"Login", logoutBtn:"Logout", user_logged_text:"Logged in",
+        back:"Back",
+        exp_insights_title:"📊 Insights", exp_insights_desc:"Chord progressions, key distribution, genre trends.",
+        exp_about_title:"ℹ️ About Us", exp_about_desc:"AI-powered tools for music creation & analysis.",
+        exp_contact_title:"📞 Contact Info", contactAddr:"RM 7, 7/F., SANG CHONG INDUSTRIAL BUILDING, 11-13 KA HING RD, KWAI CHUNG, NT, HONG KONG",
+        contactMail:"Email: komorebi.prestige@kp.com", contactPhone:"Tel: +852 5136 4213",
+        p1_title:"AI Music Analyzer", p1_sub:"Select options to generate Billboard analysis",
+        p1_name:"Song", p1_lyric:"Lyrics", p1_key:"Key", p1_chord:"Chord",
+        p1_major:"Major", p1_minor:"Minor", p1_btn:"Get 2025 Billboard Analysis",
+        p2_title:"2025 Billboard Analysis Report", ai_think_title:"AI Reasoning",
+        p2_report:"Analysis Summary", chart_key_title:"Key Distribution", chart_chord_title:"Chord Count",
+        song_list_title:"Song List", chord_rank_title:"Chord Progression Rank",
+        p2_next:"AI Generation",
+        p3_title:"AI Music Generator", p3_lang:"Language", p3_style:"Style",
+        p3_key:"Key", p3_mode:"Mode", p3_bpm:"BPM",
+        p3_lyrics:"Theme / Lyrics", p3_prompt:"AI Prompt",
+        p3_auto:"Auto-Generate", p3_gen:"Generate",
+        opt_cn:"Chinese", opt_en:"English", opt_bi:"Bilingual",
+        opt_pop:"Pop", opt_rock:"Rock", opt_rnb:"R&B", opt_jazz:"Jazz", opt_rap:"Rap",
+        opt_major:"Major", opt_minor:"Minor",
+        modalTitle:"Generating", modalTip:"Generating song based on analysis...",
+        successMsg:"Music generated successfully!",
+        count:"Count", rank:"Rank", percent:"%",
+        thinkSteps:[
+            "Loading 2025 Billboard dataset...",
+            "Filtering for {mode} songs only...",
+            "Analyzing key distribution and scales...",
+            "Extracting chord patterns and frequencies...",
+            "Analyzing mood and market preference...",
+            "Generating charts and rankings...",
+            "Completing analysis report..."
+        ],
+        reportTexts:[
+            "Based on 2025 Billboard charts, representative of global popular music.",
+            "Filtered to {mode} songs for targeted insights.",
+            "Hits concentrate in common keys, matching modern pop patterns.",
+            "A few classic chord progressions dominate, ideal for AI creation.",
+            "{mode} songs tend to be {emotion}.",
+            "Charts show key and chord usage for direct reference.",
+            "Using recommended patterns improves hit potential significantly."
+        ],
+        majorEmotion:"upbeat, positive, energetic",
+        minorEmotion:"emotional, deep, mellow"
+    }
+};
+
+let currLang = 'zh-CN';
+let selectedMode = 'major';
+
+const langSwitch = document.getElementById('langSwitch');
+langSwitch.addEventListener('change', (e) => {
+    currLang = e.target.value;
+    applyLang();
+});
+
+function applyLang() {
+    const t = i18n[currLang];
+    document.getElementById('logo_text').innerText = t.logo_text;
+    document.getElementById('nav_insights').innerText = t.nav_insights;
+    document.getElementById('nav_about').innerText = t.nav_about;
+    document.getElementById('nav_contact').innerText = t.nav_contact;
+    document.getElementById('loginBtn').innerText = t.loginBtn;
+    document.getElementById('logoutBtn').innerText = t.logoutBtn;
+    document.getElementById('user_logged_text').innerText = t.user_logged_text;
+    document.getElementById('back1').innerText = t.back;
+    document.getElementById('back2').innerText = t.back;
+
+    document.getElementById('exp_insights_title').innerText = t.exp_insights_title;
+    document.getElementById('exp_insights_desc').innerText = t.exp_insights_desc;
+    document.getElementById('exp_about_title').innerText = t.exp_about_title;
+    document.getElementById('exp_about_desc').innerText = t.exp_about_desc;
+    document.getElementById('exp_contact_title').innerText = t.exp_contact_title;
+    document.getElementById('contactAddr').innerText = t.contactAddr;
+    document.getElementById('contactMail').innerText = t.contactMail;
+    document.getElementById('contactPhone').innerText = t.contactPhone;
+
+    document.getElementById('p1_title').innerText = t.p1_title;
+    document.getElementById('p1_sub').innerText = t.p1_sub;
+    document.getElementById('p1_name').innerText = t.p1_name;
+    document.getElementById('p1_lyric').innerText = t.p1_lyric;
+    document.getElementById('p1_key').innerText = t.p1_key;
+    document.getElementById('p1_chord').innerText = t.p1_chord;
+    document.getElementById('p1_major').innerText = t.p1_major;
+    document.getElementById('p1_minor').innerText = t.p1_minor;
+    document.getElementById('p1_btn').innerText = t.p1_btn;
+
+    document.getElementById('p2_title').innerText = t.p2_title;
+    document.getElementById('ai_think_title').innerText = t.ai_think_title;
+    document.getElementById('p2_report').innerText = t.p2_report;
+    document.getElementById('chart_key_title').innerText = t.chart_key_title;
+    document.getElementById('chart_chord_title').innerText = t.chart_chord_title;
+    document.getElementById('song_list_title').innerText = t.song_list_title;
+    document.getElementById('chord_rank_title').innerText = t.chord_rank_title;
+    document.getElementById('p2_next').innerText = t.p2_next;
+
+    document.getElementById('p3_title').innerText = t.p3_title;
+    document.getElementById('p3_lang').innerText = t.p3_lang;
+    document.getElementById('p3_style').innerText = t.p3_style;
+    document.getElementById('p3_key').innerText = t.p3_key;
+    document.getElementById('p3_mode').innerText = t.p3_mode;
+    document.getElementById('p3_bpm').innerText = t.p3_bpm;
+    document.getElementById('p3_lyrics').innerText = t.p3_lyrics;
+    document.getElementById('p3_prompt').innerText = t.p3_prompt;
+    document.getElementById('p3_auto').innerText = t.p3_auto;
+    document.getElementById('p3_gen').innerText = t.p3_gen;
+
+    document.getElementById('opt_cn').innerText = t.opt_cn;
+    document.getElementById('opt_en').innerText = t.opt_en;
+    document.getElementById('opt_bi').innerText = t.opt_bi;
+    document.getElementById('opt_pop').innerText = t.opt_pop;
+    document.getElementById('opt_rock').innerText = t.opt_rock;
+    document.getElementById('opt_rnb').innerText = t.opt_rnb;
+    document.getElementById('opt_jazz').innerText = t.opt_jazz;
+    document.getElementById('opt_rap').innerText = t.opt_rap;
+    document.getElementById('opt_major').innerText = t.opt_major;
+    document.getElementById('opt_minor').innerText = t.opt_minor;
+
+    document.getElementById('modalTitle').innerText = t.modalTitle;
+    document.getElementById('modalTip').innerText = t.modalTip;
+}
+
+const expandArea = document.getElementById('expandArea');
+const contents = ['contentInsights','contentAbout','contentContact'];
+function showContent(id) {
+    expandArea.classList.remove('hidden');
+    contents.forEach(c => document.getElementById(c).classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+}
+document.getElementById('nav_insights').onclick = () => showContent('contentInsights');
+document.getElementById('nav_about').onclick = () => showContent('contentAbout');
+document.getElementById('nav_contact').onclick = () => showContent('contentContact');
+
+document.getElementById('loginBtn').onclick = () => {
+    document.getElementById('loginBox').classList.add('hidden');
+    document.getElementById('userBox').classList.remove('hidden');
+};
+document.getElementById('logoutBtn').onclick = () => {
+    document.getElementById('loginBox').classList.remove('hidden');
+    document.getElementById('userBox').classList.add('hidden');
+};
+
+const delay = ms => new Promise(r => setTimeout(r, ms));
+
+document.getElementById('toPage2').onclick = async () => {
+    selectedMode = document.querySelector('input[name="mode"]:checked').value;
+    await delay(2200);
+    document.getElementById('page1').classList.add('hidden');
+    document.getElementById('page2').classList.remove('hidden');
+    await startAIGeneratingReport();
+};
+document.getElementById('back1').onclick = async () => {
+    await delay(1500);
+    document.getElementById('page2').classList.add('hidden');
+    document.getElementById('page1').classList.remove('hidden');
+};
+document.getElementById('toPage3').onclick = async () => {
+    await delay(2000);
+    document.getElementById('page2').classList.add('hidden');
+    document.getElementById('page3').classList.remove('hidden');
+    document.getElementById('genMode').value = selectedMode;
+};
+document.getElementById('back2').onclick = async () => {
+    await delay(1500);
+    document.getElementById('page3').classList.add('hidden');
+    document.getElementById('page2').classList.remove('hidden');
+};
+
+async function startAIGeneratingReport() {
+    const t = i18n[currLang];
+    const thinkBox = document.getElementById('thinkBox');
+    const reportContainer = document.getElementById('reportContainer');
+    thinkBox.innerHTML = '';
+    reportContainer.innerHTML = '';
+
+    const modeLabel = selectedMode === 'major' ? t.opt_major : t.opt_minor;
+    const emotion = selectedMode === 'major' ? t.majorEmotion : t.minorEmotion;
+
+    const thinkSteps = t.thinkSteps.map(s => s.replace('{mode}', modeLabel));
+    for (const txt of thinkSteps) {
+        const line = document.createElement('div');
+        line.className = 'think-line';
+        line.innerText = txt;
+        thinkBox.appendChild(line);
+        thinkBox.scrollTop = thinkBox.scrollHeight;
+        await delay(1400);
+    }
+
+    const reportTexts = t.reportTexts.map(s =>
+        s.replace('{mode}', modeLabel).replace('{emotion}', emotion)
+    );
+    for (const txt of reportTexts) {
+        const p = document.createElement('div');
+        p.className = 'report-part';
+        p.innerText = txt;
+        reportContainer.appendChild(p);
+        await delay(300);
+        p.classList.add('show');
+    }
+
+    await delay(600); document.getElementById('chartArea').style.display = 'grid'; renderCharts();
+    await delay(600); document.getElementById('tableArea').style.display = 'block'; renderTable();
+    await delay(400); document.getElementById('chordRankArea').style.display = 'block'; renderChordRankTable();
+}
+
+function renderCharts() {
+    const t = i18n[currLang];
+    const keys = selectedMode === 'major' ? ['C','G','F','D'] : ['Am','Dm','Em','Bm'];
+    const counts = [4,3,2,1];
+    const total = counts.reduce((a,b)=>a+b,0);
+
+    new Chart(document.getElementById('chartKey'), {
+        type: 'pie',
+        data: { labels: keys, datasets: [{ data: counts, backgroundColor: ['#6366f1','#8b5cf6','#ec4899','#10b981'] }] },
+        options: {
+            plugins: {
+                tooltip: { callbacks: { label: (c) => `${c.label}: ${Math.round(c.raw/total*100)}%` } }
+            }
+        }
+    });
+
+    const chords = selectedMode === 'major' ? ['1-5-6-4','1-6-4-5','1-4-5'] : ['6-4-1-5','6-2-5-1','2-5-1'];
+    new Chart(document.getElementById('chartChord'), {
+        type: 'bar',
+        data: {
+            labels: chords,
+            datasets: [{ label: t.count, data: [5,3,2], backgroundColor: '#6366f1' }]
+        },
+        options: { scales: { y: { beginAtZero: true } } }
+    });
+}
+
+function renderTable() {
+    const t = i18n[currLang];
+    const list = selectedMode === 'major' ? [
+        {n:"Happy Together",k:"C",m:t.opt_major,c:"1-5-6-4"},
+        {n:"Shine Bright",k:"G",m:t.opt_major,c:"1-5-6-4"},
+        {n:"Daylight",k:"F",m:t.opt_major,c:"1-6-4-5"}
+    ] : [
+        {n:"Night Cry",k:"Am",m:t.opt_minor,c:"6-4-1-5"},
+        {n:"Sad Wind",k:"Dm",m:t.opt_minor,c:"6-4-1-5"},
+        {n:"Blue Story",k:"Em",m:t.opt_minor,c:"6-2-5-1"}
+    ];
+    let html = `<tr class="bg-gray-50 font-semibold"><td class="border p-2">${t.p1_name}</td><td class="border p-2">${t.p1_key}</td><td class="border p-2">${t.p3_mode}</td><td class="border p-2">${t.p1_chord}</td></tr>`;
+    list.forEach(x => { html += `<tr><td class="border p-2">${x.n}</td><td class="border p-2">${x.k}</td><td class="border p-2">${x.m}</td><td class="border p-2">${x.c}</td></tr>`; });
+    document.getElementById('songTable').innerHTML = html;
+}
+
+function renderChordRankTable() {
+    const t = i18n[currLang];
+    const data = selectedMode === 'major' ? [
+        {c:"1-5-6-4",n:5,p:"50%"},{c:"1-6-4-5",n:3,p:"30%"},{c:"1-4-5",n:2,p:"20%"}
+    ] : [
+        {c:"6-4-1-5",n:6,p:"60%"},{c:"6-2-5-1",n:3,p:"30%"},{c:"2-5-1",n:1,p:"10%"}
+    ];
+    let html = `<tr class="bg-gray-50 font-semibold"><td class="border p-2">${t.rank}</td><td class="border p-2">${t.p1_chord}</td><td class="border p-2">${t.count}</td><td class="border p-2">${t.percent}</td></tr>`;
+    data.forEach((item,i) => { html += `<tr><td class="border p-2">${i+1}</td><td class="border p-2 font-bold text-primary">${item.c}</td><td class="border p-2">${item.n}</td><td class="border p-2">${item.p}</td></tr>`; });
+    document.getElementById('chordRankTable').innerHTML = html;
+}
+
+document.getElementById('genByAnalysis').onclick = () => {
+    const t = i18n[currLang];
+    if (selectedMode === 'major') {
+        document.getElementById('genKey').value = 'C';
+        document.getElementById('genMode').value = 'major';
+        document.getElementById('genStyle').value = 'pop';
+        document.getElementById('genBpm').value = '120';
+        document.getElementById('genOwnLyric').value = t.opt_en ? 'Upbeat positive pop' : '阳光轻快流行曲';
+        document.getElementById('genPrompt').value = t.opt_en ? 'C Major, 1-5-6-4, 120BPM, pop' : 'C大调 1-5-6-4 120BPM 流行';
+    } else {
+        document.getElementById('genKey').value = 'Am';
+        document.getElementById('genMode').value = 'minor';
+        document.getElementById('genStyle').value = 'rnb';
+        document.getElementById('genBpm').value = '80';
+        document.getElementById('genOwnLyric').value = t.opt_en ? 'Emotional deep R&B' : '深情抒情R&B';
+        document.getElementById('genPrompt').value = t.opt_en ? 'Am Minor, 6-4-1-5, 80BPM, R&B' : 'Am小调 6-4-1-5 80BPM R&B';
+    }
+};
+
+document.getElementById('startGen').onclick = () => {
+    const t = i18n[currLang];
+    const modal = document.getElementById('progressModal');
+    const bar = document.getElementById('progressBar');
+    modal.classList.remove('hidden');
+    let w = 0;
+    const itv = setInterval(() => {
+        w += 2;
+        bar.style.width = w + '%';
+        if (w >= 100) {
+            clearInterval(itv);
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                alert(t.successMsg);
+            }, 500);
+        }
+    }, 50);
+};
+
+applyLang();
+</script>
+</body>
+</html>
