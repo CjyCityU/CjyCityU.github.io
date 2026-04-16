@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Music Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .think-box {
+            height: 140px;
+            overflow: auto;
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .think-line {
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeIn 0.6s forwards;
+            margin-bottom: 4px;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .report-part {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.6s ease;
+        }
+
+        .report-part.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .spin-loader {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #eee;
+            border-top: 3px solid #6366f1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        /* 登录弹窗 */
+        .login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .login-box {
+            background: white;
+            padding: 24px;
+            border-radius: 10px;
+            width: 320px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        /* 关闭按钮 */
+        .login-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            font-size: 18px;
+            color: #666;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+
+        .login-close:hover {
+            color: #000;
+        }
+
+        /* 菜单高亮 */
+        .nav-btn.active {
+            color: #4f46e5;
+            font-weight: 600;
+            border-bottom: 2px solid #4f46e5;
+        }
+
+        /* 字体大小调整 */
+        body.font-sm {
+            font-size: 14px;
+        }
+
+        body.font-md {
+            font-size: 16px;
+        }
+
+        body.font-lg {
+            font-size: 18px;
+        }
+
+        body.font-sm .text-sm {
+            font-size: 12px;
+        }
+
+        body.font-md .text-sm {
+            font-size: 14px;
+        }
+
+        body.font-lg .text-sm {
+            font-size: 16px;
+        }
+
+        body.font-sm .text-lg {
+            font-size: 16px;
+        }
+
+        body.font-md .text-lg {
+            font-size: 18px;
+        }
+
+        body.font-lg .text-lg {
+            font-size: 20px;
+        }
+
+        body.font-sm .text-xl {
+            font-size: 18px;
+        }
+
+        body.font-md .text-xl {
+            font-size: 20px;
+        }
+
+        body.font-lg .text-xl {
+            font-size: 22px;
+        }
+
+        body.font-sm h1.text-xl {
+            font-size: 20px;
+        }
+
+        body.font-md h1.text-xl {
+            font-size: 24px;
+        }
+
+        body.font-lg h1.text-xl {
+            font-size: 28px;
+        }
+
+        /* 宇宙科技动态背景 */
+        #particles-js {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: transparent;
+            pointer-events: none;
+        }
+
+        /* 霓虹灯卡片效果 */
+        .neon-card {
+            position: relative;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .dark .neon-card {
+            background: rgba(31, 41, 55, 0.7);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .dark .neon-card:hover {
+            box-shadow: 0 0 25px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            border-color: rgba(99, 102, 241, 0.6);
+        }
+
+        /* 头像上传相关 */
+        .avatar-upload-wrapper {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px dashed #6366f1;
+            cursor: pointer;
+            margin: 0 auto;
+            background-color: #f3f4f6;
+        }
+
+        .dark .avatar-upload-wrapper {
+            background-color: #374151;
+        }
+
+        .avatar-upload-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .avatar-upload-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 10px;
+            text-align: center;
+            padding: 4px 0;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .avatar-upload-wrapper:hover .avatar-upload-overlay {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+
+<body
+    class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-md transition-colors duration-300 relative">
+
+    <!-- 动态背景容器 -->
+    <div id="particles-js"></div>
+
+    <!-- 登录弹窗 -->
+    <div class="login-modal" id="loginModal">
+        <div class="login-box dark:bg-gray-800 dark:text-gray-100 neon-card">
+            <button class="login-close dark:text-gray-400 dark:hover:text-white" id="closeLoginModal">&times;</button>
+
+            <div class="flex justify-center border-b dark:border-gray-700 mb-4">
+                <button id="tabLogin" class="px-4 py-2 font-bold text-indigo-600 border-b-2 border-indigo-600"
+                    data-i18n="login_tab">登录</button>
+                <button id="tabSignup"
+                    class="px-4 py-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    data-i18n="signup_tab">注册</button>
+            </div>
+
+            <h3 class="text-lg font-bold mb-4 hidden" data-i18n="login_title" id="loginTitle">用户登录</h3>
+            <h3 class="text-lg font-bold mb-4 hidden" data-i18n="signup_title" id="signupTitle">注册新用户</h3>
+
+            <div class="mb-3">
+                <label class="block text-sm mb-1" data-i18n="username">账号</label>
+                <input id="username"
+                    class="w-full border p-2 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    type="text" placeholder="请输入账号" data-i18n-placeholder="username_placeholder">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm mb-1" data-i18n="password">密码</label>
+                <input id="password"
+                    class="w-full border p-2 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    type="password" placeholder="请输入密码" data-i18n-placeholder="password_placeholder">
+            </div>
+            <div class="mb-4 hidden" id="confirmPwdGroup">
+                <label class="block text-sm mb-1" data-i18n="confirm_password">确认密码</label>
+                <input id="confirmPassword"
+                    class="w-full border p-2 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    type="password" placeholder="请再次输入密码" data-i18n-placeholder="confirm_pwd_placeholder">
+            </div>
+
+            <button id="loginSubmit" class="bg-indigo-600 text-white w-full py-2 rounded hover:bg-indigo-700 transition"
+                data-i18n="login_btn">登录</button>
+            <button id="signupSubmit"
+                class="bg-green-600 text-white w-full py-2 rounded hover:bg-green-700 transition hidden"
+                data-i18n="signup_btn">立即注册</button>
+        </div>
+    </div>
+
+    <div class="sticky top-0 z-50 bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/50">
+        <div class="px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <i class="fa fa-music text-xl text-indigo-600"></i>
+                <span class="font-bold" data-i18n="app_name">AI音乐生成器</span>
+            </div>
+            <div class="flex items-center gap-5 text-sm font-medium">
+                <!-- 顶部菜单 -->
+                <button class="nav-btn px-2 py-1 hover:text-indigo-600 transition-colors" data-page="page1"
+                    data-i18n="menu_analysis">数据分析</button>
+                <button class="nav-btn px-2 py-1 hover:text-indigo-600 transition-colors" data-page="about"
+                    data-i18n="menu_about">关于我们</button>
+                <button class="nav-btn px-2 py-1 hover:text-indigo-600 transition-colors" data-page="contact"
+                    data-i18n="menu_contact">联系我们</button>
+
+                <!-- 语言切换 -->
+                <select id="langSelect" class="border p-1 text-sm rounded dark:bg-gray-800 dark:border-gray-700">
+                    <option value="zh-CN" data-i18n="lang_zh_cn">简体中文</option>
+                    <option value="zh-TW" data-i18n="lang_zh_tw">繁体中文</option>
+                    <option value="en" data-i18n="lang_en">English</option>
+                </select>
+
+                <!-- 主题切换 -->
+                <select id="themeSelect" class="border p-1 text-sm rounded dark:bg-gray-800 dark:border-gray-700">
+                    <option value="system" data-i18n="theme_system">跟随系统</option>
+                    <option value="light" data-i18n="theme_light">浅色模式</option>
+                    <option value="dark" data-i18n="theme_dark">深色模式</option>
+                </select>
+
+                <!-- 字体大小调整 -->
+                <select id="fontSizeSelect" class="border p-1 text-sm rounded dark:bg-gray-800 dark:border-gray-700">
+                    <option value="font-sm" data-i18n="font_small">小号字体</option>
+                    <option value="font-md" selected data-i18n="font_medium">中号字体</option>
+                    <option value="font-lg" data-i18n="font_large">大号字体</option>
+                </select>
+
+                <div class="relative flex items-center gap-2">
+                    <div class="text-gray-600 dark:text-gray-300" data-i18n="login" id="loginText">登录</div>
+                    <button id="avatarBtn"
+                        class="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center overflow-hidden">
+                        <i class="fa fa-user"></i>
+                    </button>
+                    <div id="userPanel"
+                        class="hidden absolute top-10 right-0 bg-white dark:bg-gray-800 shadow-md p-4 rounded-md w-48 z-50">
+                        <button id="closeUserPanel"
+                            class="absolute top-1 right-2 text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-lg">&times;</button>
+                        <p class="text-sm mb-2 mt-2"><span data-i18n="token_left">剩余生成次数：</span><span
+                                id="tokenLeft">10</span></p>
+                        <button id="settingsBtn"
+                            class="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100 text-xs px-3 py-1 rounded w-full mb-2"
+                            data-i18n="menu_settings">使用者设置</button>
+                        <button id="logoutBtn"
+                            class="bg-red-500 text-white hover:bg-red-600 text-xs px-3 py-1 rounded w-full"
+                            data-i18n="logout">退出登录</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-4 py-6">
+        <!-- 页面1：数据分析 -->
+        <div id="page1" class="page-content block">
+            <div class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white p-6 rounded-xl mb-6 shadow-lg">
+                <h1 class="text-xl font-bold" data-i18n="analysis_title">AI音乐分析工具</h1>
+                <p data-i18n="analysis_desc">选择分析元素与调式，生成Billboard报告</p>
+            </div>
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow dark:shadow-gray-900/50 mb-6">
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <label
+                        class="flex items-center gap-2 p-2 border dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer"><input
+                            type="checkbox" checked> <span data-i18n="song_name">歌曲名称</span></label>
+                    <label
+                        class="flex items-center gap-2 p-2 border dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer"><input
+                            type="checkbox" checked> <span data-i18n="lyrics">歌词</span></label>
+                    <label
+                        class="flex items-center gap-2 p-2 border dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer"><input
+                            type="checkbox" checked> <span data-i18n="mode">调式</span></label>
+                    <label
+                        class="flex items-center gap-2 p-2 border dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer"><input
+                            type="checkbox" checked> <span data-i18n="chord">和弦</span></label>
+                </div>
+                <div class="flex gap-4 mb-4">
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="mode" value="major"
+                            checked> <span data-i18n="major">大调</span></label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="mode" value="minor">
+                        <span data-i18n="minor">小调</span></label>
+                </div>
+                <button id="toPage2" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
+                    data-i18n="get_analysis">获取2025
+                    Billboard分析</button>
+            </div>
+        </div>
+
+        <!-- 页面2：报告 -->
+        <div id="page2" class="page-content hidden">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow dark:shadow-gray-900/50 mb-6">
+                <div class="flex justify-between mb-4">
+                    <h2 class="font-bold text-lg" data-i18n="report_title">2025 Billboard 分析报告</h2>
+                    <button id="back1"
+                        class="text-indigo-600 dark:text-indigo-400 border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 px-3 py-1 rounded transition"
+                        data-i18n="back">返回</button>
+                </div>
+                <div class="mb-4">
+                    <h3 class="text-sm font-semibold mb-1" data-i18n="ai_thinking">AI 思考过程</h3>
+                    <div class="think-box dark:bg-gray-900 dark:border dark:border-gray-700" id="thinkBox"></div>
+                </div>
+                <div class="mb-6">
+                    <h3 class="font-semibold mb-2" data-i18n="analysis_summary">分析总结报告</h3>
+                    <div id="reportContainer" class="space-y-2 text-sm text-gray-700 dark:text-gray-300"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" id="chartArea" style="display:none">
+                    <div class="h-64">
+                        <h4 class="text-sm font-medium mb-1" data-i18n="key_distribution">调性分布</h4>
+                        <canvas id="chartKey"></canvas>
+                    </div>
+                    <div class="h-64">
+                        <h4 class="text-sm font-medium mb-1" data-i18n="chord_stats">和弦进行统计</h4>
+                        <canvas id="chartChord"></canvas>
+                    </div>
+                </div>
+
+                <div id="chordTableArea" class="mb-6" style="display:none">
+                    <div class="mb-6">
+                        <h4 class="text-sm font-bold mb-2" data-i18n="song_details_list">歌曲详情列表</h4>
+                        <table class="w-full text-sm border-collapse border border-gray-200 dark:border-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th class="border border-gray-200 dark:border-gray-700 p-2 text-left"
+                                        data-i18n="song_column">歌曲</th>
+                                    <th class="border border-gray-200 dark:border-gray-700 p-2 text-left"
+                                        data-i18n="key_column">调</th>
+                                    <th class="border border-gray-200 dark:border-gray-700 p-2 text-left"
+                                        data-i18n="mode_column">调式</th>
+                                    <th class="border border-gray-200 dark:border-gray-700 p-2 text-left"
+                                        data-i18n="chord_column">和弦</th>
+                                </tr>
+                            </thead>
+                            <tbody id="songDetailsBody">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div>
+                        <h4 class="text-sm font-bold mb-2" data-i18n="chord_progression_table">和弦进行频率排行（降序）</h4>
+                        <table class="w-full text-sm border-collapse border border-gray-200 dark:border-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th class="border border-gray-200 dark:border-gray-700 p-2 text-left"
+                                        data-i18n="rank_column">排名</th>
+                                    <th class="border border-gray-200 dark:border-gray-700 p-2 text-left"
+                                        data-i18n="chord_progression">和弦进行
+                                    </th>
+                                    <th class="border border-gray-200 dark:border-gray-700 p-2 text-left"
+                                        data-i18n="occurrences">出现次数</th>
+                                    <th class="border border-gray-200 dark:border-gray-700 p-2 text-left"
+                                        data-i18n="frequency_ratio">频率占比
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="chordTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <button id="toPage3" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
+                    data-i18n="to_generate">前往AI音乐生成</button>
+            </div>
+        </div>
+
+        <!-- 页面3：生成 -->
+        <div id="page3" class="page-content hidden">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow dark:shadow-gray-900/50 mb-6">
+                <div class="flex justify-between mb-4">
+                    <h2 class="font-bold text-lg" data-i18n="generate_title">AI音乐生成</h2>
+                    <button id="back2"
+                        class="text-indigo-600 dark:text-indigo-400 border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 px-3 py-1 rounded transition"
+                        data-i18n="back">返回</button>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block mb-1 font-medium" data-i18n="song_name_input">歌曲名称</label>
+                    <input id="genSongName"
+                        class="w-full border p-2 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        type="text" placeholder="请输入歌名" data-i18n-placeholder="song_name_placeholder">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block mb-1 font-medium" data-i18n="lyric_lang">歌词语言</label>
+                        <select id="genLang"
+                            class="w-full border p-2 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="cn" data-i18n="cn">中文</option>
+                            <option value="en" data-i18n="en">英文</option>
+                            <option value="bi" data-i18n="bi">中英双语</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block mb-1 font-medium" data-i18n="style">风格</label>
+                        <select id="genStyle"
+                            class="w-full border p-2 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="pop">Pop</option>
+                            <option value="rock">Rock</option>
+                            <option value="rnb">R&B</option>
+                            <option value="jazz">Jazz</option>
+                            <option value="rap">Rap</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block mb-1 font-medium" data-i18n="key">调</label>
+                        <select id="genKey"
+                            class="w-full border p-2 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="C">C</option>
+                            <option value="G">G</option>
+                            <option value="D">D</option>
+                            <option value="A">A</option>
+                            <option value="E">E</option>
+                            <option value="Am">Am</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block mb-1 font-medium" data-i18n="mode">调式</label>
+                        <select id="genMode"
+                            class="w-full border p-2 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="major" data-i18n="major">大调</option>
+                            <option value="minor" data-i18n="minor">小调</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block mb-1 font-medium" data-i18n="bpm">BPM</label>
+                        <select id="genBpm"
+                            class="w-full border p-2 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="60">60</option>
+                            <option value="80">80</option>
+                            <option value="100">100</option>
+                            <option value="120">120</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="block mb-1 font-medium" data-i18n="custom_lyrics">自定义歌词 / 主题</label>
+                    <textarea id="genOwnLyric"
+                        class="w-full border p-2 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        rows="3"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="block mb-1 font-medium" data-i18n="ai_prompt">AI生成提示词</label>
+                    <textarea id="genPrompt"
+                        class="w-full border p-2 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        rows="3"></textarea>
+                </div>
+
+                <div class="flex gap-2">
+                    <button id="genByAnalysis"
+                        class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded transition"
+                        data-i18n="gen_by_analysis">根据分析一键生成</button>
+                    <button id="startGen"
+                        class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded transition"
+                        data-i18n="generate_music">生成音乐</button>
+                </div>
+
+                <!-- 生成结果 -->
+                <div id="genResultArea"
+                    class="mt-6 hidden p-4 border dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-700/50">
+                    <h3 class="font-bold text-lg mb-2" data-i18n="gen_result_title">生成结果</h3>
+                    <div class="mb-3">
+                        <audio id="genAudio" controls class="w-full">
+                            <source src="../Songs Generated/We’ve Got Hearts_Jazz_GMajor.mp3" type="audio/mpeg">
+                        </audio>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="buyCopyrightBtn"
+                            class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded font-bold flex-1 transition"
+                            data-i18n="buy_copyright">付费购买版权并下载</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 关于我们 -->
+        <div id="about" class="page-content hidden">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow dark:shadow-gray-900/50">
+                <h2 class="text-xl font-bold mb-4" data-i18n="about_title">关于我们</h2>
+                <p class="mb-2" data-i18n="about_desc1">AI音乐生成器是一款基于人工智能技术的音乐创作工具，致力于帮助用户轻松创作专业级音乐作品。</p>
+                <p class="mb-2" data-i18n="about_desc2">我们整合了先进的音乐分析与生成算法，支持多种风格、调式和语言，为音乐爱好者、创作者提供强大的创作支持。</p>
+                <p data-i18n="about_desc3">版本：1.0.0 | © 2025 AI Music Generator</p>
+            </div>
+        </div>
+
+        <!-- 联系我们 -->
+        <div id="contact" class="page-content hidden">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow dark:shadow-gray-900/50">
+                <h2 class="text-xl font-bold mb-4" data-i18n="contact_title">联系我们</h2>
+                <div class="space-y-3">
+                    <p><strong data-i18n="email">邮箱：</strong> komorebi.prestige@kp.com</p>
+                    <p><strong data-i18n="phone">电话：</strong> +852 5136 3213</p>
+                    <p><strong data-i18n="wechat">微信：</strong> Komorebi_Prestige_AIMusicGenerator</p>
+                    <p><strong data-i18n="address">地址：</strong> <span data-i18n="address_value">香港特别行政区 新界葵涌区嘉庆路11-13号
+                            生昌工业大厦 7楼7室</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 使用者设置 -->
+        <div id="settings" class="page-content hidden">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow dark:shadow-gray-900/50 neon-card">
+                <h2 class="text-xl font-bold mb-4" data-i18n="menu_settings">使用者设置</h2>
+
+                <div class="mb-6 flex flex-col items-center">
+                    <input type="file" id="avatarUpload" accept="image/*" class="hidden">
+                    <div class="avatar-upload-wrapper" id="avatarUploadWrapper" title="点击更换头像"
+                        data-i18n-title="change_avatar_title">
+                        <i class="fa fa-user text-3xl text-gray-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+                            id="defaultAvatarIcon"></i>
+                        <img id="settingsAvatarPreview" src="" alt="Avatar" class="hidden">
+                        <div class="avatar-upload-overlay" data-i18n="upload_avatar">上传</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm mb-1 font-medium" data-i18n="user_level">用户等级</label>
+                        <div
+                            class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 bg-gray-50 flex items-center justify-between">
+                            <span id="userLevelDisplay" class="font-bold text-indigo-600 dark:text-indigo-400"
+                                data-i18n="level_standard">标准模式</span>
+                            <i class="fa fa-gem text-yellow-500"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1 font-medium flex justify-between">
+                            <span data-i18n="remaining_tokens">剩余使用量</span>
+                            <span class="font-bold text-indigo-600 dark:text-indigo-400"><span
+                                    id="settingsTokenCount">10</span> / 100</span>
+                        </label>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-3">
+                            <div class="bg-indigo-600 h-2.5 rounded-full" style="width: 10%" id="tokenProgressBar">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm mb-1 font-medium" data-i18n="set_username">用户名</label>
+                        <input id="setUserName"
+                            class="w-full border p-2 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            type="text" placeholder="输入用户名" data-i18n-placeholder="set_username_placeholder">
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1 font-medium" data-i18n="set_password">密码</label>
+                        <input id="setPassword"
+                            class="w-full border p-2 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            type="password" placeholder="输入新密码" data-i18n-placeholder="set_password_placeholder">
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1 font-medium" data-i18n="set_author">版权作者名</label>
+                        <input id="setAuthor"
+                            class="w-full border p-2 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            type="text" placeholder="输入版权作者名" data-i18n-placeholder="set_author_placeholder">
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1 font-medium" data-i18n="api_key_label">自定义 API Key</label>
+                        <input id="userApiKey"
+                            class="w-full border p-2 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            type="text" placeholder="sk-..." data-i18n-placeholder="api_key_placeholder">
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-4" data-i18n="api_key_hint">
+                    输入您自己的API密钥及其他信息，数据将仅在本地保存。</p>
+                <button id="saveSettingsBtn"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition"
+                    data-i18n="save_settings">保存设置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载弹窗 -->
+    <div id="progressModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 dark:text-gray-100 p-8 rounded-xl flex flex-col items-center shadow-2xl">
+            <h3 class="text-center font-bold mb-4" data-i18n="generating">音乐生成中</h3>
+            <div class="spin-loader"></div>
+        </div>
+    </div>
+
+    <script>
+        // 多语言资源
+        const translations = {
+            'zh-CN': {
+                app_name: 'Komorebi Prestige Consulting Ltd - AI音乐生成器',
+                menu_analysis: '数据分析',
+                menu_about: '关于我们',
+                menu_contact: '联系我们',
+                login: '登录',
+                logout: '退出登录',
+                login_title: '用户登录',
+                username: '账号',
+                password: '密码',
+                username_placeholder: '请输入账号',
+                password_placeholder: '请输入密码',
+                login_btn: '登录',
+                token_left: '剩余生成次数：',
+                analysis_title: 'AI音乐分析工具',
+                analysis_desc: '选择分析元素与调式，生成Billboard报告',
+                song_name: '歌曲名称',
+                lyrics: '歌词',
+                mode: '调式',
+                chord: '和弦',
+                major: '大调',
+                minor: '小调',
+                get_analysis: '获取2025 Billboard分析',
+                report_title: '2025 Billboard 分析报告',
+                back: '返回',
+                ai_thinking: 'AI 思考过程',
+                analysis_summary: '分析总结报告',
+                key_distribution: '调性分布',
+                chord_stats: '和弦进行统计',
+                song_details_list: '歌曲详情列表',
+                song_column: '歌曲',
+                key_column: '调',
+                mode_column: '调式',
+                chord_column: '和弦',
+                chord_progression_table: '和弦进行频率排行（降序）',
+                rank_column: '排名',
+                chord_progression: '和弦进行',
+                occurrences: '出现次数',
+                frequency_ratio: '频率占比',
+                chord_example: '示例和弦',
+                usage_frequency: '出现频率',
+                to_generate: '前往AI音乐生成',
+                generate_title: 'AI音乐生成',
+                lyric_lang: '歌词语言',
+                cn: '中文',
+                en: '英文',
+                bi: '中英双语',
+                style: '风格',
+                key: '调',
+                bpm: 'BPM',
+                custom_lyrics: '自定义歌词 / 主题',
+                ai_prompt: 'AI生成提示词',
+                gen_by_analysis: '根据分析一键生成',
+                generate_music: '生成音乐',
+                generating: '音乐生成中',
+                about_title: '关于我们',
+                about_desc1: '我们以“数据解构音乐”为核心理念，将感性流动的听觉韵律，转化为可量化、可拆解、可重构的结构化乐章。',
+                about_desc2: '通过深度解析热门和弦的行进脉络，赋能每一次全新的二次创作，让零基础的你也能轻启音乐之旅，谱写独属于自己的旋律与故事。',
+                about_desc3: '版本：1.0.0 | © 2026 Komorebi Prestige Consulting Ltd - AI Music Generator',
+                contact_title: '联系我们',
+                email: '邮箱',
+                phone: '电话',
+                wechat: '微信',
+                address: '地址',
+                address_value: '香港特别行政区 新界葵涌区嘉庆路11-13号 生昌工业大厦 7楼7室',
+                login_success: '登录成功！',
+                login_fail: '账号或密码错误！\n默认：admin / 123456',
+                logout_success: '已退出登录',
+                login_tab: '登录',
+                signup_tab: '注册',
+                signup_title: '注册新用户',
+                confirm_password: '确认密码',
+                confirm_pwd_placeholder: '请再次输入密码',
+                signup_btn: '立即注册',
+                signup_success: '注册成功！请登录。',
+                signup_pwd_mismatch: '两次输入的密码不一致！',
+                signup_empty: '账号和密码不能为空！',
+                analyzing: '分析中...',
+                pop_song: '阳光轻快流行曲',
+                rnb_song: '深情抒情R&B',
+                please_login: '请先登录',
+                no_token: '次数不足！',
+                generate_success: '音乐生成完成！',
+                font_small: '小号字体',
+                font_medium: '中号字体',
+                font_large: '大号字体',
+                menu_settings: '使用者设置',
+                api_key_label: '自定义 API Key',
+                api_key_placeholder: 'sk-...',
+                api_key_hint: '输入您自己的API密钥及其他信息，数据将仅在本地保存。',
+                save_settings: '保存设置',
+                settings_saved: '设置已保存！',
+                theme_system: '跟随系统',
+                theme_light: '浅色模式',
+                theme_dark: '深色模式',
+                set_username: '用户名',
+                set_username_placeholder: '输入用户名',
+                set_password: '密码',
+                set_password_placeholder: '输入新密码',
+                set_author: '版权作者名',
+                set_author_placeholder: '输入版权作者名',
+                song_name_input: '歌曲名称',
+                song_name_placeholder: '请输入歌名',
+                gen_result_title: '生成结果',
+                buy_copyright: '付费购买版权并下载',
+                buy_success: '购买成功！开始下载...',
+                please_input_api: '请在使用者设置中输入您的 API Key！',
+                lang_zh_cn: '简体中文',
+                lang_zh_tw: '繁体中文',
+                lang_en: 'English',
+                user_level: '用户等级',
+                level_standard: '标准模式',
+                level_pro: '专家模式 (正在开发上线中，敬请期待)',
+                level_premium: '卓越模式 (正在开发上线中，敬请期待)',
+                remaining_tokens: '剩余使用量',
+                upload_avatar: '上传',
+                change_avatar_title: '点击更换头像',
+                step1: '正在加载2025 Billboard热门歌曲数据集…',
+                step2: '根据用户选择，仅筛选【',
+                songs: '歌曲】进行分析…',
+                step3: '解析每首歌曲的调性分布与音阶特征…',
+                step4: '提取和弦进行模式并统计出现频率…',
+                step5: '分析情绪特征与市场偏好关联…',
+                step6: '生成可视化图表与数据排行…',
+                step7: '整理完整分析报告，准备输出结果…',
+                report1: '基于2025年12月27日Billboard Hot 100榜单数据，1-100名分布均匀，27%歌曲曾进入前10名。平均在榜时间20.59周，40%歌曲在榜超21周（长尾效应显著）。',
+                report2: '圣诞季特征明显：29%为圣诞歌曲（前10名占5首），多为经典老歌重新上榜，且偏爱G/C等明亮温暖大调及1-6-2-5经典爵士化和弦进行。',
+                report3: '音乐理论特征：87%使用标准调弦；大调歌曲占主导（G大调11%、C大调8%）；29%使用变调夹（1品最常用占48.3%）。',
+                report4: '和弦进行模式：共识别143种和弦（G, C, D, Em, Am最常用）和47种进行模式。最常见进行为 1-6-2-5（5首）、1-5-6-4（4首）、1-4-5-1（4首）。',
+                report5: '结论：流行音乐以标准调弦、G/C大调、基础和弦进行为主，追求大众化和演奏便利性。建议创作者参考主流和弦进行（如1-5-6-4）以提高大众接受度。',
+                count: '次数'
+            },
+            'zh-TW': {
+                app_name: 'Komorebi Prestige Consulting Ltd - AI音樂生成器',
+                menu_analysis: '數據分析',
+                menu_about: '關於我們',
+                menu_contact: '聯繫我們',
+                login: '登入',
+                logout: '登出',
+                login_title: '使用者登入',
+                username: '帳號',
+                password: '密碼',
+                username_placeholder: '請輸入帳號',
+                password_placeholder: '請輸入密碼',
+                login_btn: '登入',
+                token_left: '剩餘生成次數：',
+                analysis_title: 'AI音樂分析工具',
+                analysis_desc: '選擇分析元素與調式，生成Billboard報告',
+                song_name: '歌曲名稱',
+                lyrics: '歌詞',
+                mode: '調式',
+                chord: '和弦',
+                major: '大調',
+                minor: '小調',
+                get_analysis: '取得2025 Billboard分析',
+                report_title: '2025 Billboard 分析報告',
+                back: '返回',
+                ai_thinking: 'AI 思考過程',
+                analysis_summary: '分析總結報告',
+                key_distribution: '調性分布',
+                chord_stats: '和弦進行統計',
+                song_details_list: '歌曲詳情列表',
+                song_column: '歌曲',
+                key_column: '調',
+                mode_column: '調式',
+                chord_column: '和弦',
+                chord_progression_table: '和弦進行頻率排行（降序）',
+                rank_column: '排名',
+                chord_progression: '和弦進行',
+                occurrences: '出現次數',
+                frequency_ratio: '頻率占比',
+                chord_example: '示例和弦',
+                usage_frequency: '出現頻率',
+                to_generate: '前往AI音樂生成',
+                generate_title: 'AI音樂生成',
+                lyric_lang: '歌詞語言',
+                cn: '中文',
+                en: '英文',
+                bi: '中英雙語',
+                style: '風格',
+                key: '調',
+                bpm: 'BPM',
+                custom_lyrics: '自訂歌詞 / 主題',
+                ai_prompt: 'AI生成提示詞',
+                gen_by_analysis: '根據分析一鍵生成',
+                generate_music: '生成音樂',
+                generating: '音樂生成中',
+                about_title: '關於我們',
+                about_desc1: '我們以「數據解構音樂」為核心理念，將感性流動的聽覺韻律，轉化為可量化、可拆解、可重構的結構化樂章。',
+                about_desc2: '透過深度解析熱門和弦的行進脈絡，賦能每一次全新的二次創作，讓零基礎的你也能輕啟音樂之旅，譜寫獨屬於自己的旋律與故事。',
+                about_desc3: '版本：1.0.0 | © 2026 Komorebi Prestige Consulting Ltd - AI Music Generator',
+                contact_title: '聯繫我們',
+                email: '信箱',
+                phone: '電話',
+                wechat: '微信',
+                address: '地址',
+                address_value: '香港特別行政區 新界葵涌區嘉慶路11-13號 生昌工業大廈 7樓7室',
+                login_success: '登入成功！',
+                login_fail: '帳號或密碼錯誤！\n預設：admin / 123456',
+                logout_success: '已登出',
+                login_tab: '登入',
+                signup_tab: '註冊',
+                signup_title: '註冊新用戶',
+                confirm_password: '確認密碼',
+                confirm_pwd_placeholder: '請再次輸入密碼',
+                signup_btn: '立即註冊',
+                signup_success: '註冊成功！請登入。',
+                signup_pwd_mismatch: '兩次輸入的密碼不一致！',
+                signup_empty: '帳號和密碼不能為空！',
+                analyzing: '分析中...',
+                pop_song: '陽光輕快流行曲',
+                rnb_song: '深情抒情R&B',
+                please_login: '請先登入',
+                no_token: '次數不足！',
+                generate_success: '音樂生成完成！',
+                font_small: '小號字體',
+                font_medium: '中號字體',
+                font_large: '大號字體',
+                menu_settings: '使用者設置',
+                api_key_label: '自訂 API Key',
+                api_key_placeholder: 'sk-...',
+                api_key_hint: '輸入您自己的API金鑰及其他資訊，資料將僅在本地保存。',
+                save_settings: '儲存設置',
+                settings_saved: '設置已儲存！',
+                theme_system: '跟隨系統',
+                theme_light: '淺色模式',
+                theme_dark: '深色模式',
+                set_username: '使用者名稱',
+                set_username_placeholder: '輸入使用者名稱',
+                set_password: '密碼',
+                set_password_placeholder: '輸入新密碼',
+                set_author: '版權作者名',
+                set_author_placeholder: '輸入版權作者名',
+                song_name_input: '歌曲名稱',
+                song_name_placeholder: '請輸入歌名',
+                gen_result_title: '生成結果',
+                buy_copyright: '付費購買版權並下載',
+                buy_success: '購買成功！開始下載...',
+                please_input_api: '請在使用者設置中輸入您的 API Key！',
+                lang_zh_cn: '簡體中文',
+                lang_zh_tw: '繁體中文',
+                lang_en: 'English',
+                user_level: '用戶等級',
+                level_standard: '標準模式',
+                level_pro: '專家模式 (正在開發上線中，敬請期待)',
+                level_premium: '卓越模式 (正在開發上線中，敬請期待)',
+                remaining_tokens: '剩餘使用量',
+                upload_avatar: '上傳',
+                change_avatar_title: '點擊更換頭像',
+                step1: '正在載入2025 Billboard熱門歌曲資料集…',
+                step2: '根據使用者選擇，僅篩選【',
+                songs: '歌曲】進行分析…',
+                step3: '解析每首歌曲的調性分布與音階特徵…',
+                step4: '提取和弦進行模式並統計出現頻率…',
+                step5: '分析情緒特徵與市場偏好關聯…',
+                step6: '生成視覺化圖表與資料排行…',
+                step7: '整理完整分析報告，準備輸出結果…',
+                report1: '基於2025年12月27日Billboard Hot 100榜單數據，1-100名分布均勻，27%歌曲曾進入前10名。平均在榜時間20.59週，40%歌曲在榜超21週（長尾效應顯著）。',
+                report2: '聖誕季特徵明顯：29%為聖誕歌曲（前10名佔5首），多為經典老歌重新上榜，且偏愛G/C等明亮溫暖大調及1-6-2-5經典爵士化和弦進行。',
+                report3: '音樂理論特徵：87%使用標準調弦；大調歌曲佔主導（G大調11%、C大調8%）；29%使用變調夾（1品最常用佔48.3%）。',
+                report4: '和弦進行模式：共識別143種和弦（G, C, D, Em, Am最常用）和47種進行模式。最常見進行為 1-6-2-5（5首）、1-5-6-4（4首）、1-4-5-1（4首）。',
+                report5: '結論：流行音樂以標準調弦、G/C大調、基礎和弦進行為主，追求大眾化和演奏便利性。建議創作者參考主流和弦進行（如1-5-6-4）以提高大眾接受度。',
+                count: '次數'
+            },
+            'en': {
+                app_name: 'Komorebi Prestige Consulting Ltd - AI Music Generator',
+                menu_analysis: 'Data Analysis',
+                menu_about: 'About Us',
+                menu_contact: 'Contact Us',
+                login: 'Login',
+                logout: 'Logout',
+                login_title: 'User Login',
+                username: 'Username',
+                password: 'Password',
+                username_placeholder: 'Enter username',
+                password_placeholder: 'Enter password',
+                login_btn: 'Login',
+                token_left: 'Remaining Tokens: ',
+                analysis_title: 'AI Music Analysis Tool',
+                analysis_desc: 'Select elements and mode to generate Billboard report',
+                song_name: 'Song Name',
+                lyrics: 'Lyrics',
+                mode: 'Mode',
+                chord: 'Chord',
+                major: 'Major',
+                minor: 'Minor',
+                get_analysis: 'Get 2025 Billboard Analysis',
+                report_title: '2025 Billboard Analysis Report',
+                back: 'Back',
+                ai_thinking: 'AI Thinking Process',
+                analysis_summary: 'Analysis Summary Report',
+                key_distribution: 'Key Distribution',
+                chord_stats: 'Chord Progression Stats',
+                song_details_list: 'Song Details List',
+                song_column: 'Song',
+                key_column: 'Key',
+                mode_column: 'Mode',
+                chord_column: 'Chord',
+                chord_progression_table: 'Chord Progression Frequency Ranking (Descending)',
+                rank_column: 'Rank',
+                chord_progression: 'Chord Progression',
+                occurrences: 'Occurrences',
+                frequency_ratio: 'Frequency Ratio',
+                chord_example: 'Example Chords',
+                usage_frequency: 'Usage Frequency',
+                to_generate: 'Go to AI Music Generation',
+                generate_title: 'AI Music Generation',
+                lyric_lang: 'Lyric Language',
+                cn: 'Chinese',
+                en: 'English',
+                bi: 'Bilingual',
+                style: 'Style',
+                key: 'Key',
+                bpm: 'BPM',
+                custom_lyrics: 'Custom Lyrics / Theme',
+                ai_prompt: 'AI Generation Prompt',
+                gen_by_analysis: 'Generate by Analysis',
+                generate_music: 'Generate Music',
+                generating: 'Generating Music',
+                about_title: 'About Us',
+                about_desc1: 'Guided by our core philosophy of "deconstructing music through data", we transform the fluid, emotive rhythm of sound into quantifiable, analyzable and reconstructible structured compositions.',
+                about_desc2: 'By deeply exploring the patterns of popular chord progressions, we empower fresh creative reinterpretations, enabling anyone with no prior musical background to embark on their musical journey and craft their own unique melodies and stories.',
+                about_desc3: 'Ver: 1.0.0 | © 2026 Komorebi Prestige Consulting Ltd - AI Music Generator',
+                contact_title: 'Contact Us',
+                email: 'Email',
+                phone: 'Phone',
+                wechat: 'WeChat',
+                address: 'Address',
+                address_value: 'RM 7, 7/F., SANG CHONG INDUSTRIAL BUILDING, 11-13 KA HING ROAD, KWAI CHUNG, NT, HONG KONG',
+                login_success: 'Login successful!',
+                login_fail: 'Incorrect username or password!\nDefault: admin / 123456',
+                logout_success: 'Logged out successfully',
+                login_tab: 'Login',
+                signup_tab: 'Sign Up',
+                signup_title: 'Register New User',
+                confirm_password: 'Confirm Password',
+                confirm_pwd_placeholder: 'Enter password again',
+                signup_btn: 'Sign Up Now',
+                signup_success: 'Registration successful! Please login.',
+                signup_pwd_mismatch: 'Passwords do not match!',
+                signup_empty: 'Username and password cannot be empty!',
+                analyzing: 'Analyzing...',
+                pop_song: 'Upbeat pop song',
+                rnb_song: 'Emotional R&B',
+                please_login: 'Please login first',
+                no_token: 'Not enough tokens!',
+                generate_success: 'Music generated successfully!',
+                font_small: 'Small Font',
+                font_medium: 'Medium Font',
+                font_large: 'Large Font',
+                menu_settings: 'User Settings',
+                api_key_label: 'Custom API Key',
+                api_key_placeholder: 'sk-...',
+                api_key_hint: 'Enter your own API key and other info. Data is saved locally only.',
+                save_settings: 'Save Settings',
+                settings_saved: 'Settings Saved!',
+                theme_system: 'System Theme',
+                theme_light: 'Light Mode',
+                theme_dark: 'Dark Mode',
+                set_username: 'Username',
+                set_username_placeholder: 'Enter username',
+                set_password: 'Password',
+                set_password_placeholder: 'Enter new password',
+                set_author: 'Copyright Author',
+                set_author_placeholder: 'Enter author name',
+                song_name_input: 'Song Name',
+                song_name_placeholder: 'Enter song name',
+                gen_result_title: 'Generation Result',
+                buy_copyright: 'Buy Copyright & Download',
+                buy_success: 'Purchase successful! Downloading...',
+                please_input_api: 'Please enter your API Key in User Settings!',
+                lang_zh_cn: '简体中文',
+                lang_zh_tw: '繁体中文',
+                lang_en: 'English',
+                user_level: 'User Level',
+                level_standard: 'Standard',
+                level_pro: 'Pro (Under development, coming soon)',
+                level_premium: 'Premium (Under development, coming soon)',
+                remaining_tokens: 'Remaining Tokens',
+                upload_avatar: 'Upload',
+                change_avatar_title: 'Click to change avatar',
+                step1: 'Loading 2025 Billboard hot songs dataset...',
+                step2: 'Filtering ',
+                songs: ' songs for analysis based on user selection...',
+                step3: 'Parsing key distribution and scale features for each song...',
+                step4: 'Extracting chord progressions and calculating frequencies...',
+                step5: 'Analyzing correlation between emotional features and market preferences...',
+                step6: 'Generating visualization charts and data rankings...',
+                step7: 'Compiling comprehensive analysis report, preparing output...',
+                report1: 'Based on the Billboard Hot 100 data from Dec 27, 2025, 27% of songs reached the Top 10. The average charting time is 20.59 weeks, with 40% charting over 21 weeks.',
+                report2: 'Strong holiday effect: 29% are Christmas songs (5 in the Top 10), favoring bright major keys like G/C and classic 1-6-2-5 jazz chord progressions.',
+                report3: 'Musical features: 87% use standard tuning; major keys dominate (G major 11%, C major 8%); 29% use a capo (fret 1 is the most common at 48.3%).',
+                report4: 'Chord patterns: 143 chords identified (G, C, D, Em, Am are most frequent) with 47 progression patterns. Top progressions are 1-6-2-5 (5 songs), 1-5-6-4 (4 songs), and 1-4-5-1 (4 songs).',
+                report5: 'Conclusion: Pop music relies on standard tuning, G/C major, and basic chord progressions for mass appeal and ease of playing. Creators can reference 1-5-6-4 for higher mainstream acceptance.',
+                count: 'Count'
+            }
+        };
+
+        // 全局状态
+        let isLoggedIn = false;
+        let progressTimer = null;
+        let selectedMode = 'major';
+        let tokenCount = 10;
+        let currentLang = 'zh-CN';
+        let currentPage = 'page1';
+        let currentFontSize = 'font-md';
+        let currentTheme = 'system';
+        let userLevel = 'standard'; // standard, pro, premium
+        let userInfo = {
+            username: 'admin',
+            password: '123456',
+            author: 'admin',
+            apiKey: '',
+            avatarUrl: ''
+        };
+
+        // DOM元素
+        const loginModal = document.getElementById('loginModal');
+        const userPanel = document.getElementById('userPanel');
+        const closeLoginModal = document.getElementById('closeLoginModal');
+        const langSelect = document.getElementById('langSelect');
+        const navBtns = document.querySelectorAll('.nav-btn');
+        const pageContents = document.querySelectorAll('.page-content');
+        const fontSizeSelect = document.getElementById('fontSizeSelect');
+        const themeSelect = document.getElementById('themeSelect');
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 初始化 particles.js 动态背景
+            particlesJS('particles-js', {
+                "particles": {
+                    "number": {
+                        "value": 60,
+                        "density": {
+                            "enable": true,
+                            "value_area": 800
+                        }
+                    },
+                    "color": {
+                        "value": ["#6366f1", "#8b5cf6", "#ec4899", "#10b981", "#fcd34d"]
+                    },
+                    "shape": {
+                        "type": ["circle", "triangle", "star"],
+                        "stroke": {
+                            "width": 1,
+                            "color": "#ffffff"
+                        },
+                    },
+                    "opacity": {
+                        "value": 0.6,
+                        "random": true,
+                        "anim": {
+                            "enable": true,
+                            "speed": 1.5,
+                            "opacity_min": 0.1,
+                            "sync": false
+                        }
+                    },
+                    "size": {
+                        "value": 6,
+                        "random": true,
+                        "anim": {
+                            "enable": true,
+                            "speed": 3,
+                            "size_min": 0.5,
+                            "sync": false
+                        }
+                    },
+                    "line_linked": {
+                        "enable": true,
+                        "distance": 150,
+                        "color": "#6366f1",
+                        "opacity": 0.4,
+                        "width": 1.5
+                    },
+                    "move": {
+                        "enable": true,
+                        "speed": 1.5,
+                        "direction": "none",
+                        "random": true,
+                        "straight": false,
+                        "out_mode": "out",
+                        "bounce": false,
+                        "attract": {
+                            "enable": true,
+                            "rotateX": 600,
+                            "rotateY": 1200
+                        }
+                    }
+                },
+                "interactivity": {
+                    "detect_on": "canvas",
+                    "events": {
+                        "onhover": {
+                            "enable": true,
+                            "mode": "grab"
+                        },
+                        "onclick": {
+                            "enable": true,
+                            "mode": "push"
+                        },
+                        "resize": true
+                    },
+                    "modes": {
+                        "grab": {
+                            "distance": 200,
+                            "line_linked": {
+                                "opacity": 0.9
+                            }
+                        },
+                        "push": {
+                            "particles_nb": 6
+                        }
+                    }
+                },
+                "retina_detect": true
+            });
+
+            // 绑定菜单点击
+            navBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const targetPage = btn.getAttribute('data-page');
+                    switchPage(targetPage);
+                });
+            });
+
+            // 绑定语言切换
+            langSelect.addEventListener('change', (e) => {
+                currentLang = e.target.value;
+                updateLanguage();
+                localStorage.setItem('preferredLang', currentLang);
+            });
+
+            // 绑定字体大小切换
+            fontSizeSelect.addEventListener('change', (e) => {
+                document.body.classList.remove(currentFontSize);
+                currentFontSize = e.target.value;
+                document.body.classList.add(currentFontSize);
+                localStorage.setItem('preferredFontSize', currentFontSize);
+            });
+
+            // 绑定主题切换
+            themeSelect.addEventListener('change', (e) => {
+                currentTheme = e.target.value;
+                localStorage.setItem('preferredTheme', currentTheme);
+                applyTheme();
+            });
+
+            // 加载保存的主题
+            const savedTheme = localStorage.getItem('preferredTheme');
+            if (savedTheme) {
+                currentTheme = savedTheme;
+                themeSelect.value = savedTheme;
+            }
+            applyTheme();
+
+            // 监听系统主题变化
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                if (currentTheme === 'system') applyTheme();
+            });
+
+            // 加载保存的语言
+            const savedLang = localStorage.getItem('preferredLang');
+            if (savedLang && translations[savedLang]) {
+                currentLang = savedLang;
+                langSelect.value = savedLang;
+                updateLanguage();
+            }
+
+            // 加载保存的字体大小
+            const savedFontSize = localStorage.getItem('preferredFontSize');
+            if (savedFontSize) {
+                document.body.classList.remove(currentFontSize);
+                currentFontSize = savedFontSize;
+                fontSizeSelect.value = savedFontSize;
+                document.body.classList.add(currentFontSize);
+            }
+
+            // 加载保存的用户信息
+            const savedUserInfo = localStorage.getItem('userInfo');
+            if (savedUserInfo) {
+                userInfo = JSON.parse(savedUserInfo);
+            } else {
+                const savedApiKey = localStorage.getItem('userApiKey');
+                if (savedApiKey) userInfo.apiKey = savedApiKey;
+            }
+
+            // 填充设置页面数据
+            document.getElementById('setUserName').value = userInfo.username;
+            document.getElementById('setPassword').value = userInfo.password;
+            document.getElementById('setAuthor').value = userInfo.author;
+            document.getElementById('userApiKey').value = userInfo.apiKey;
+            if (userInfo.avatarUrl) {
+                const preview = document.getElementById('settingsAvatarPreview');
+                const defaultIcon = document.getElementById('defaultAvatarIcon');
+                preview.src = userInfo.avatarUrl;
+                preview.classList.remove('hidden');
+                defaultIcon.classList.add('hidden');
+            }
+
+            // 加载用户等级
+            const savedLevel = localStorage.getItem('userLevel');
+            if (savedLevel) {
+                userLevel = savedLevel;
+            }
+            updateUserLevelDisplay();
+
+            // 其他初始化
+            initLogin();
+            initSettings();
+            initPageNavigation();
+        });
+
+        // 应用主题
+        function applyTheme() {
+            const isDark = currentTheme === 'dark' || (currentTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            if (chartKeyInstance) chartKeyInstance.update();
+            if (chartChordInstance) chartChordInstance.update();
+        }
+
+        // 页面切换
+        function switchPage(pageId) {
+            // 隐藏所有页面
+            pageContents.forEach(page => page.classList.add('hidden'));
+            // 显示目标页面
+            document.getElementById(pageId).classList.remove('hidden');
+            // 更新菜单高亮
+            navBtns.forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-page') === pageId);
+            });
+            currentPage = pageId;
+        }
+
+        // 更新语言
+        function updateLanguage() {
+            document.documentElement.lang = currentLang;
+            const langData = translations[currentLang];
+
+            // 替换文本
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (langData[key]) {
+                    el.textContent = langData[key];
+                }
+            });
+
+            // 替换占位符
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (langData[key]) {
+                    el.placeholder = langData[key];
+                }
+            });
+
+            if (typeof chartChordInstance !== 'undefined' && chartChordInstance) {
+                chartChordInstance.data.datasets[0].label = langData.count || '次数';
+                chartChordInstance.update();
+            }
+        }
+
+        // 登录/注册功能
+        function initLogin() {
+            const tabLogin = document.getElementById('tabLogin');
+            const tabSignup = document.getElementById('tabSignup');
+            const loginTitle = document.getElementById('loginTitle');
+            const signupTitle = document.getElementById('signupTitle');
+            const confirmPwdGroup = document.getElementById('confirmPwdGroup');
+            const loginSubmit = document.getElementById('loginSubmit');
+            const signupSubmit = document.getElementById('signupSubmit');
+            const confirmPassword = document.getElementById('confirmPassword');
+            let isLoginMode = true;
+
+            // 切换到登录
+            tabLogin.addEventListener('click', () => {
+                isLoginMode = true;
+                tabLogin.className = "px-4 py-2 font-bold text-indigo-600 border-b-2 border-indigo-600";
+                tabSignup.className = "px-4 py-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200";
+                loginTitle.classList.remove('hidden');
+                signupTitle.classList.add('hidden');
+                confirmPwdGroup.classList.add('hidden');
+                loginSubmit.classList.remove('hidden');
+                signupSubmit.classList.add('hidden');
+            });
+
+            // 切换到注册
+            tabSignup.addEventListener('click', () => {
+                isLoginMode = false;
+                tabSignup.className = "px-4 py-2 font-bold text-indigo-600 border-b-2 border-indigo-600";
+                tabLogin.className = "px-4 py-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200";
+                signupTitle.classList.remove('hidden');
+                loginTitle.classList.add('hidden');
+                confirmPwdGroup.classList.remove('hidden');
+                signupSubmit.classList.remove('hidden');
+                loginSubmit.classList.add('hidden');
+            });
+
+            // 头像点击
+            document.getElementById('avatarBtn').addEventListener('click', () => {
+                if (isLoggedIn) {
+                    userPanel.classList.toggle('hidden');
+                } else {
+                    loginModal.style.display = 'flex';
+                }
+            });
+
+            // 关闭用户面板
+            document.getElementById('closeUserPanel').addEventListener('click', () => {
+                userPanel.classList.add('hidden');
+            });
+
+            // 关闭登录弹窗
+            closeLoginModal.addEventListener('click', () => {
+                loginModal.style.display = 'none';
+            });
+
+            // 点击空白关闭
+            loginModal.addEventListener('click', (e) => {
+                if (e.target === loginModal) loginModal.style.display = 'none';
+            });
+
+            // 登录提交
+            document.getElementById('loginSubmit').addEventListener('click', () => {
+                const user = document.getElementById('username').value.trim();
+                const pwd = document.getElementById('password').value.trim();
+
+                if (user === userInfo.username && pwd === userInfo.password) {
+                    isLoggedIn = true;
+                    loginModal.style.display = 'none';
+                    userPanel.classList.remove('hidden');
+                    // 更新头像为用户上传的LOGO或默认
+                    const avatarBtn = document.getElementById('avatarBtn');
+                    if (userInfo.avatarUrl) {
+                        avatarBtn.innerHTML = `<img src="${userInfo.avatarUrl}" alt="User Avatar" class="w-full h-full object-cover">`;
+                    } else {
+                        avatarBtn.innerHTML = '<img src="../LOGO sqaure_white BG.png" alt="User Avatar" class="w-full h-full object-contain">';
+                    }
+                    avatarBtn.classList.remove('bg-indigo-600');
+                    avatarBtn.classList.add('bg-white');
+                    document.getElementById('loginText').textContent = userInfo.username;
+                    document.getElementById('loginText').removeAttribute('data-i18n'); // 移除 i18n 避免语言切换时覆盖为"登录"
+                    alert(translations[currentLang].login_success || '登录成功！');
+                } else {
+                    alert(translations[currentLang].login_fail || '账号或密码错误！\n默认：admin / 123456');
+                }
+            });
+
+            // 退出登录
+            document.getElementById('logoutBtn').addEventListener('click', () => {
+                isLoggedIn = false;
+                userPanel.classList.add('hidden');
+                // 恢复默认头像
+                const avatarBtn = document.getElementById('avatarBtn');
+                avatarBtn.innerHTML = '<i class="fa fa-user"></i>';
+                avatarBtn.classList.remove('bg-white');
+                avatarBtn.classList.add('bg-indigo-600');
+                document.getElementById('loginText').textContent = translations[currentLang].login || '登录';
+                document.getElementById('loginText').setAttribute('data-i18n', 'login');
+                alert(translations[currentLang].logout_success || '已退出登录');
+            });
+
+            // 注册提交
+            document.getElementById('signupSubmit').addEventListener('click', () => {
+                const user = document.getElementById('username').value.trim();
+                const pwd = document.getElementById('password').value.trim();
+                const confirmPwd = document.getElementById('confirmPassword').value.trim();
+
+                if (!user || !pwd) {
+                    alert(translations[currentLang].signup_empty || '账号和密码不能为空！');
+                    return;
+                }
+
+                if (pwd !== confirmPwd) {
+                    alert(translations[currentLang].signup_pwd_mismatch || '两次输入的密码不一致！');
+                    return;
+                }
+
+                // 注册成功，更新userInfo并保存
+                userInfo.username = user;
+                userInfo.password = pwd;
+                userInfo.author = user; // 默认版权名为用户名
+                localStorage.setItem('userInfo', JSON.stringify(userInfo));
+
+                alert(translations[currentLang].signup_success || '注册成功！请登录。');
+                // 切换回登录Tab
+                tabLogin.click();
+            });
+        }
+
+        // 设置功能
+        function initSettings() {
+            const avatarUpload = document.getElementById('avatarUpload');
+            const avatarUploadWrapper = document.getElementById('avatarUploadWrapper');
+            const settingsAvatarPreview = document.getElementById('settingsAvatarPreview');
+            const defaultAvatarIcon = document.getElementById('defaultAvatarIcon');
+
+            avatarUploadWrapper.addEventListener('click', () => {
+                avatarUpload.click();
+            });
+
+            avatarUpload.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (event) {
+                        settingsAvatarPreview.src = event.target.result;
+                        settingsAvatarPreview.classList.remove('hidden');
+                        defaultAvatarIcon.classList.add('hidden');
+                        userInfo.avatarUrl = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            document.getElementById('settingsBtn').addEventListener('click', () => {
+                userPanel.classList.add('hidden');
+                switchPage('settings');
+                updateTokenProgress();
+            });
+
+            document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+                userInfo.username = document.getElementById('setUserName').value.trim() || 'admin';
+                userInfo.password = document.getElementById('setPassword').value.trim() || '123456';
+                userInfo.author = document.getElementById('setAuthor').value.trim() || userInfo.username;
+                userInfo.apiKey = document.getElementById('userApiKey').value.trim();
+
+                localStorage.setItem('userInfo', JSON.stringify(userInfo));
+
+                if (isLoggedIn) {
+                    document.getElementById('loginText').textContent = userInfo.username;
+                    document.getElementById('loginText').removeAttribute('data-i18n');
+                    // 更新右上角头像
+                    const avatarBtn = document.getElementById('avatarBtn');
+                    if (userInfo.avatarUrl) {
+                        avatarBtn.innerHTML = `<img src="${userInfo.avatarUrl}" alt="User Avatar" class="w-full h-full object-cover">`;
+                    } else {
+                        avatarBtn.innerHTML = '<img src="../LOGO sqaure_white BG.png" alt="User Avatar" class="w-full h-full object-contain">';
+                    }
+                }
+
+                alert(translations[currentLang].settings_saved || '设置已保存！');
+            });
+        }
+
+        // 更新Token进度条
+        function updateTokenProgress() {
+            const maxTokens = 100;
+            const percent = Math.min(100, Math.max(0, (tokenCount / maxTokens) * 100));
+            document.getElementById('settingsTokenCount').innerText = tokenCount;
+            document.getElementById('tokenProgressBar').style.width = percent + '%';
+
+            // 颜色变化
+            const bar = document.getElementById('tokenProgressBar');
+            if (percent > 50) {
+                bar.className = 'bg-green-500 h-2.5 rounded-full transition-all duration-500';
+            } else if (percent > 20) {
+                bar.className = 'bg-yellow-500 h-2.5 rounded-full transition-all duration-500';
+            } else {
+                bar.className = 'bg-red-500 h-2.5 rounded-full transition-all duration-500';
+            }
+        }
+
+        // 更新用户等级显示
+        function updateUserLevelDisplay() {
+            const levelMap = {
+                'standard': { i18n: 'level_standard', icon: 'fa-user text-gray-500' },
+                'pro': { i18n: 'level_pro', icon: 'fa-star text-blue-500' },
+                'premium': { i18n: 'level_premium', icon: 'fa-gem text-yellow-500' }
+            };
+            const levelInfo = levelMap[userLevel] || levelMap['standard'];
+            const displayEl = document.getElementById('userLevelDisplay');
+            displayEl.setAttribute('data-i18n', levelInfo.i18n);
+            displayEl.textContent = translations[currentLang][levelInfo.i18n] || translations['zh-CN'][levelInfo.i18n];
+            displayEl.nextElementSibling.className = 'fa ' + levelInfo.icon;
+        }
+
+        // 页面内导航
+        function initPageNavigation() {
+            const delay = ms => new Promise(r => setTimeout(r, ms));
+
+            // 页面1 → 页面2
+            document.getElementById('toPage2').addEventListener('click', async function () {
+                const btn = this;
+                const originalText = translations[currentLang].get_analysis;
+                btn.innerHTML = `<i class="fa fa-spinner fa-spin"></i> <span data-i18n="analyzing">${translations[currentLang].analyzing}</span>`;
+                btn.removeAttribute('data-i18n');
+                btn.disabled = true;
+
+                selectedMode = document.querySelector('input[name="mode"]:checked').value;
+
+                await delay(2200);
+                switchPage('page2');
+                btn.setAttribute('data-i18n', 'get_analysis');
+                btn.innerHTML = translations[currentLang].get_analysis;
+                btn.disabled = false;
+                await startAIGeneratingReport();
+            });
+
+            // 返回页面1
+            document.getElementById('back1').addEventListener('click', () => switchPage('page1'));
+
+            // 页面2 → 页面3
+            document.getElementById('toPage3').addEventListener('click', () => {
+                switchPage('page3');
+                document.getElementById('genMode').value = selectedMode;
+            });
+
+            // 返回页面2
+            document.getElementById('back2').addEventListener('click', () => switchPage('page2'));
+
+            // 根据分析填充
+            document.getElementById('genByAnalysis').addEventListener('click', () => {
+                if (selectedMode === 'major') {
+                    document.getElementById('genKey').value = 'C';
+                    document.getElementById('genMode').value = 'major';
+                    document.getElementById('genStyle').value = 'pop';
+                    document.getElementById('genBpm').value = '120';
+                    document.getElementById('genOwnLyric').value = translations[currentLang].pop_song || '阳光轻快流行曲';
+                    document.getElementById('genPrompt').value = 'C major 1-5-6-4 120BPM';
+                } else {
+                    document.getElementById('genKey').value = 'Am';
+                    document.getElementById('genMode').value = 'minor';
+                    document.getElementById('genStyle').value = 'rnb';
+                    document.getElementById('genBpm').value = '80';
+                    document.getElementById('genOwnLyric').value = translations[currentLang].rnb_song || '深情抒情R&B';
+                    document.getElementById('genPrompt').value = 'Am minor 6-4-1-5 80BPM';
+                }
+            });
+
+            // 生成音乐
+            document.getElementById('startGen').addEventListener('click', function () {
+                if (!isLoggedIn) {
+                    alert(translations[currentLang].please_login || "请先登录");
+                    loginModal.style.display = 'flex';
+                    return;
+                }
+
+                if (!userInfo.apiKey) {
+                    alert(translations[currentLang].please_input_api || "请在使用者设置中输入您的 API Key！");
+                    switchPage('settings');
+                    return;
+                }
+
+                if (tokenCount <= 0) {
+                    alert(translations[currentLang].no_token || "次数不足！");
+                    return;
+                }
+
+                tokenCount--;
+                document.getElementById('tokenLeft').innerText = tokenCount;
+
+                const modal = document.getElementById('progressModal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+
+                let start = Date.now();
+                const total = 5000; // Simulated time (5s instead of 86400s)
+                clearInterval(progressTimer);
+                progressTimer = setInterval(() => {
+                    if (Date.now() - start >= total) {
+                        clearInterval(progressTimer);
+                        modal.classList.add('hidden');
+                        alert(translations[currentLang].generate_success || "音乐生成完成！");
+
+                        // Show result area
+                        document.getElementById('genResultArea').classList.remove('hidden');
+                    }
+                }, 1000);
+            });
+
+            // 下载逻辑
+            document.getElementById('buyCopyrightBtn').addEventListener('click', () => {
+                alert(translations[currentLang].buy_success || "购买成功！开始下载...");
+                const a = document.createElement('a');
+                a.href = '../Songs Generated/We’ve Got Hearts_Jazz_GMajor.mp3';
+                const songName = document.getElementById('genSongName').value.trim() || 'AI_Music';
+                a.download = songName + '.mp3';
+                a.click();
+            });
+        }
+
+        // AI报告生成
+        async function startAIGeneratingReport() {
+            const thinkBox = document.getElementById('thinkBox');
+            const reportContainer = document.getElementById('reportContainer');
+            thinkBox.innerHTML = '';
+            reportContainer.innerHTML = '';
+
+            const steps = [
+                '<span data-i18n="step1"></span>',
+                `<span data-i18n="step2"></span><span data-i18n="${selectedMode}"></span><span data-i18n="songs"></span>`,
+                '<span data-i18n="step3"></span>',
+                '<span data-i18n="step4"></span>',
+                '<span data-i18n="step5"></span>',
+                '<span data-i18n="step6"></span>',
+                '<span data-i18n="step7"></span>'
+            ];
+
+            for (const html of steps) {
+                const line = document.createElement('div');
+                line.className = 'think-line';
+                line.innerHTML = html;
+                thinkBox.appendChild(line);
+                updateLanguage();
+                thinkBox.scrollTop = thinkBox.scrollHeight;
+                await new Promise(r => setTimeout(r, 1400));
+            }
+
+            const reports = [
+                '<span data-i18n="report1"></span>',
+                '<span data-i18n="report2"></span>',
+                '<span data-i18n="report3"></span>',
+                '<span data-i18n="report4"></span>',
+                '<span data-i18n="report5"></span>'
+            ];
+
+            for (const html of reports) {
+                const p = document.createElement('div');
+                p.className = 'report-part';
+                p.innerHTML = html;
+                reportContainer.appendChild(p);
+                updateLanguage();
+                await new Promise(r => setTimeout(r, 300));
+                p.classList.add('show');
+            }
+
+            await new Promise(r => setTimeout(r, 600));
+            document.getElementById('chartArea').style.display = 'grid';
+            renderCharts();
+        }
+
+        let chartKeyInstance = null;
+        let chartChordInstance = null;
+
+        // 图表渲染
+        function renderCharts() {
+            if (chartKeyInstance) chartKeyInstance.destroy();
+            if (chartChordInstance) chartChordInstance.destroy();
+
+            const isDark = document.documentElement.classList.contains('dark');
+            const textColor = isDark ? '#d1d5db' : '#374151'; // gray-300 / gray-700
+            const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+
+            // Key distribution data from the MD file
+            const keyLabels = ['G Major', 'C Major', 'F Major', 'D Major', 'A Minor', 'Db Major', 'Others'];
+            const keyData = [11, 8, 5, 5, 5, 5, 61];
+
+            chartKeyInstance = new Chart(document.getElementById('chartKey'), {
+                type: 'pie',
+                data: {
+                    labels: keyLabels,
+                    datasets: [{
+                        data: keyData,
+                        backgroundColor: ['#6366f1', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#9ca3af']
+                    }]
+                },
+                options: {
+                    plugins: {
+                        legend: { labels: { color: textColor } }
+                    }
+                }
+            });
+
+            // Chord progressions data from the MD file
+            const chordLabels = ['1-6-2-5', '1-5-6-4', '1-4-5-1', 'Others'];
+            const chordData = [5, 4, 4, 87];
+
+            chartChordInstance = new Chart(document.getElementById('chartChord'), {
+                type: 'bar',
+                data: {
+                    labels: chordLabels,
+                    datasets: [{
+                        label: translations[currentLang].count || '次数',
+                        data: chordData,
+                        backgroundColor: '#6366f1'
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: textColor },
+                            grid: { color: gridColor }
+                        },
+                        x: {
+                            ticks: { color: textColor },
+                            grid: { color: gridColor }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: textColor } }
+                    }
+                }
+            });
+
+            document.getElementById('chordTableArea').style.display = 'block';
+
+            // Song Details List
+            const songDetailsBody = document.getElementById('songDetailsBody');
+            songDetailsBody.innerHTML = '';
+
+            const songData = [
+                { song: 'Happy Together', key: 'C', mode: 'Major', chord: '1-5-6-4' },
+                { song: 'Shine Bright', key: 'G', mode: 'Major', chord: '1-5-6-4' },
+                { song: 'Daylight', key: 'F', mode: 'Major', chord: '1-6-4-5' }
+            ];
+
+            songData.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+            <td class="border border-gray-200 p-2">${row.song}</td>
+            <td class="border border-gray-200 p-2">${row.key}</td>
+            <td class="border border-gray-200 p-2">${row.mode}</td>
+            <td class="border border-gray-200 p-2 text-indigo-600 font-mono">${row.chord}</td>
+        `;
+                songDetailsBody.appendChild(tr);
+            });
+
+            // Chord progression table data from the MD file
+            const tbody = document.getElementById('chordTableBody');
+            tbody.innerHTML = '';
+
+            const tableData = [
+                { rank: '1', prog: '1-5-6-4', count: '5', freq: '50%' },
+                { rank: '2', prog: '1-6-4-5', count: '3', freq: '30%' },
+                { rank: '3', prog: '1-4-5', count: '2', freq: '20%' }
+            ];
+
+            tableData.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+            <td class="border border-gray-200 p-2">${row.rank}</td>
+            <td class="border border-gray-200 p-2 text-indigo-600 font-mono">${row.prog}</td>
+            <td class="border border-gray-200 p-2">${row.count}</td>
+            <td class="border border-gray-200 p-2">${row.freq}</td>
+        `;
+                tbody.appendChild(tr);
+            });
+        }
+    </script>
+</body>
+
+</html>
